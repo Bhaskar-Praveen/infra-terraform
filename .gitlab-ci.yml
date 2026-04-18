@@ -46,11 +46,38 @@ bootstrap:
   script:
     - cd bootstrap
     - terraform init -backend=false
-    - if aws s3api head-bucket --bucket devops-platform4-terraform-state >/dev/null 2>&1; then terraform import aws_s3_bucket.state devops-platform4-terraform-state; fi
-    - if aws dynamodb describe-table --table-name terraform-locks >/dev/null 2>&1; then terraform import aws_dynamodb_table.lock terraform-locks; fi
+    # S3 bucket import detection
+    - |
+      echo "[BOOTSTRAP] Checking S3 bucket..."
+      if aws s3api head-bucket --bucket devops-platform4-terraform-state --region $AWS_DEFAULT_REGION 2>/dev/null; then
+        echo "[BOOTSTRAP] S3 bucket exists, attempting import..."
+        if ! terraform import aws_s3_bucket.state devops-platform4-terraform-state; then
+          echo "[BOOTSTRAP] ERROR: S3 import failed. Aborting to prevent state/reality mismatch."
+          exit 1
+        fi
+        echo "[BOOTSTRAP] S3 bucket imported successfully"
+      else
+        echo "[BOOTSTRAP] S3 bucket does not exist, will be created by apply"
+      fi
+    # DynamoDB lock table import detection
+    - |
+      echo "[BOOTSTRAP] Checking DynamoDB lock table..."
+      if aws dynamodb describe-table --table-name terraform-locks --region $AWS_DEFAULT_REGION 2>/dev/null; then
+        echo "[BOOTSTRAP] DynamoDB lock table exists, attempting import..."
+        if ! terraform import aws_dynamodb_table.lock terraform-locks; then
+          echo "[BOOTSTRAP] ERROR: DynamoDB import failed. Aborting to prevent state/reality mismatch."
+          exit 1
+        fi
+        echo "[BOOTSTRAP] DynamoDB lock table imported successfully"
+      else
+        echo "[BOOTSTRAP] DynamoDB lock table does not exist, will be created by apply"
+      fi
+    - echo "[BOOTSTRAP] Applying bootstrap configuration..."
     - terraform apply -auto-approve
+    - echo "[BOOTSTRAP] Bootstrap complete. Verifying resources..."
     - aws sts get-caller-identity
     - aws s3 ls s3://devops-platform4-terraform-state
+    - aws dynamodb describe-table --table-name terraform-locks --region $AWS_DEFAULT_REGION
 
 # ---------------- DEV ---------------- #
 
