@@ -7,6 +7,10 @@ stages:
   - plan
   - apply
 
+id_tokens:
+  AWS_ID_TOKEN:
+    aud: https://gitlab.com
+
 before_script:
   - terraform --version
   - apk add --no-cache git curl jq
