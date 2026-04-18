@@ -1,3 +1,2 @@
-variable "region" {
-  default = "us-west-2"
-}
+variable "region" {}
+variable "cluster_name" {}

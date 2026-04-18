@@ -1,7 +1,97 @@
-stages:
-  - test
+image: hashicorp/terraform:1.5
 
-test:
-  stage: test
+stages:
+  - validate
+  - plan
+  - apply
+
+before_script:
+  - terraform --version
+  - apk add --no-cache git curl jq
+
+  # OIDC setup
+  - echo "$CI_JOB_JWT_V2" > /tmp/web_identity_token
+  - export AWS_ROLE_ARN=$AWS_ROLE_ARN
+  - export AWS_WEB_IDENTITY_TOKEN_FILE=/tmp/web_identity_token
+  - export AWS_DEFAULT_REGION=$AWS_DEFAULT_REGION
+
+# ---------------- DEV ---------------- #
+
+validate_dev:
+  stage: validate
   script:
-    - echo "CI WORKING"
+    - cd envs/dev
+    - terraform init
+    - terraform validate
+
+plan_dev:
+  stage: plan
+  script:
+    - cd envs/dev
+    - terraform init
+    - terraform plan -out=tfplan
+  artifacts:
+    paths:
+      - envs/dev/tfplan
+
+apply_dev:
+  stage: apply
+  when: manual
+  script:
+    - cd envs/dev
+    - terraform init
+    - terraform apply -auto-approve tfplan
+
+# ---------------- PROD ---------------- #
+
+validate_prod:
+  stage: validate
+  script:
+    - cd envs/prod
+    - terraform init
+    - terraform validate
+
+plan_prod:
+  stage: plan
+  script:
+    - cd envs/prod
+    - terraform init
+    - terraform plan -out=tfplan
+  artifacts:
+    paths:
+      - envs/prod/tfplan
+
+apply_prod:
+  stage: apply
+  when: manual
+  script:
+    - cd envs/prod
+    - terraform init
+    - terraform apply -auto-approve tfplan
+
+# ---------------- DR ---------------- #
+
+validate_dr:
+  stage: validate
+  script:
+    - cd envs/dr
+    - terraform init
+    - terraform validate
+
+plan_dr:
+  stage: plan
+  script:
+    - cd envs/dr
+    - terraform init
+    - terraform plan -out=tfplan
+  artifacts:
+    paths:
+      - envs/dr/tfplan
+
+apply_dr:
+  stage: apply
+  when: manual
+  script:
+    - cd envs/dr
+    - terraform init
+    - terraform apply -auto-approve tfplan
