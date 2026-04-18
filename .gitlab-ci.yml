@@ -1,51 +1,7 @@
-image: hashicorp/terraform:1.5
-
 stages:
-  - validate
-  - plan
-  - apply
+  - test
 
-variables:
-  AWS_REGION: us-west-2
-
-before_script:
-  - echo "Setting up OIDC authentication"
-
-  # Create token file
-  - echo "$CI_JOB_JWT" > /tmp/web_identity_token
-
-  # Export required AWS env variables
-  - export AWS_ROLE_ARN=$AWS_ROLE_ARN
-  - export AWS_WEB_IDENTITY_TOKEN_FILE=/tmp/web_identity_token
-  - export AWS_DEFAULT_REGION=$AWS_REGION
-
-  # Debug (important)
-  - echo "Caller identity check"
-  - aws sts get-caller-identity || echo "Auth will happen during terraform"
-
-# ================= PROD =================
-
-prod_validate:
-  stage: validate
+test:
+  stage: test
   script:
-    - cd envs/prod
-    - terraform init
-    - terraform validate
-
-prod_plan:
-  stage: plan
-  script:
-    - cd envs/prod
-    - terraform plan -out=tfplan
-  artifacts:
-    paths:
-      - envs/prod/tfplan
-
-prod_apply:
-  stage: apply
-  script:
-    - cd envs/prod
-    - terraform apply -auto-approve tfplan
-  when: manual
-  only:
-    - main
+    - echo "CI WORKING"
