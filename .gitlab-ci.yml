@@ -16,7 +16,8 @@ stages:
 
 before_script:
   - terraform --version
-  - apk add --no-cache git curl jq
+  - apk add --no-cache git curl jq python3 py3-pip
+  - pip3 install --no-cache-dir awscli
 
   # OIDC setup
   - echo "$AWS_ID_TOKEN" > /tmp/web_identity_token
@@ -34,9 +35,11 @@ bootstrap:
   script:
     - cd bootstrap
     - terraform init -backend=false
+    - if aws s3api head-bucket --bucket devops-platform4-terraform-state >/dev/null 2>&1; then terraform import aws_s3_bucket.state devops-platform4-terraform-state; fi
+    - if aws dynamodb describe-table --table-name terraform-locks >/dev/null 2>&1; then terraform import aws_dynamodb_table.lock terraform-locks; fi
     - terraform apply -auto-approve
     - aws sts get-caller-identity
-    - aws s3 ls s3://my-terraform-state-bucket
+    - aws s3 ls s3://devops-platform4-terraform-state
 
 # ---------------- DEV ---------------- #
 

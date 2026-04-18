@@ -1,8 +1,5 @@
 resource "aws_s3_bucket" "state" {
-  bucket = "devops-platform4-terraform-state  cd infra-terraform/bootstrap
-  terraform init -backend=false
-  terraform import aws_dynamodb_table.lock terraform-locks
-  terraform apply -auto-approve"
+  bucket = "devops-platform4-terraform-state"
 
   lifecycle {
     prevent_destroy = true
