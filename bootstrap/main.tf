@@ -1,5 +1,5 @@
 resource "aws_s3_bucket" "state" {
-  bucket = "my-terraform-state-bucket"
+  bucket = "devops-platform4-terraform-state"
 
   lifecycle {
     prevent_destroy = true
