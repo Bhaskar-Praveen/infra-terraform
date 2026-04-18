@@ -1,4 +1,5 @@
 image: hashicorp/terraform:1.5
+entrypoint: ["/bin/sh", "-c"]
 
 stages:
   - validate
