@@ -36,15 +36,18 @@ bootstrap:
   stage: bootstrap
   script:
     - cd bootstrap
+    - set -o pipefail
     - terraform init -backend=false
-    # S3 bucket import detection
+    - |
+      echo "[BOOTSTRAP] current local state:"
+      terraform state list || true
     - |
       echo "[BOOTSTRAP] Importing existing S3 bucket if present..."
       if ! terraform state list | grep -q '^aws_s3_bucket.state$'; then
         if terraform import aws_s3_bucket.state devops-platform4-terraform-state 2>/tmp/terraform_import_s3.log; then
           echo "[BOOTSTRAP] S3 bucket imported successfully"
         else
-          echo "[BOOTSTRAP] S3 import failed, checking if bucket exists..."
+          echo "[BOOTSTRAP] S3 import failed, details:";
           cat /tmp/terraform_import_s3.log
           if aws s3api head-bucket --bucket devops-platform4-terraform-state --region $AWS_DEFAULT_REGION >/dev/null 2>&1; then
             echo "[BOOTSTRAP] S3 bucket exists but import failed; aborting to avoid state mismatch"
@@ -56,14 +59,13 @@ bootstrap:
       else
         echo "[BOOTSTRAP] S3 bucket is already in state"
       fi
-    # DynamoDB lock table import detection
     - |
       echo "[BOOTSTRAP] Importing existing DynamoDB lock table if present..."
       if ! terraform state list | grep -q '^aws_dynamodb_table.lock$'; then
         if terraform import aws_dynamodb_table.lock terraform-locks 2>/tmp/terraform_import_dynamo.log; then
           echo "[BOOTSTRAP] DynamoDB lock table imported successfully"
         else
-          echo "[BOOTSTRAP] DynamoDB import failed, checking if table exists..."
+          echo "[BOOTSTRAP] DynamoDB import failed, details:";
           cat /tmp/terraform_import_dynamo.log
           if aws dynamodb describe-table --table-name terraform-locks --region $AWS_DEFAULT_REGION >/dev/null 2>&1; then
             echo "[BOOTSTRAP] DynamoDB table exists but import failed; aborting to avoid state mismatch"
@@ -75,8 +77,24 @@ bootstrap:
       else
         echo "[BOOTSTRAP] DynamoDB lock table is already in state"
       fi
+    - |
+      echo "[BOOTSTRAP] current local state after imports:"
+      terraform state list || true
+    - |
+      echo "[BOOTSTRAP] planning bootstrap"
+      terraform plan -detailed-exitcode -out=tfbootstrap.plan
+      PLAN_EXIT=$?
+      if [ "$PLAN_EXIT" -eq 2 ]; then
+        echo "[BOOTSTRAP] plan detected changes. Aborting to avoid creating existing backend resources."
+        terraform show -no-color tfbootstrap.plan
+        exit 1
+      fi
+      if [ "$PLAN_EXIT" -eq 1 ]; then
+        echo "[BOOTSTRAP] plan failed"
+        exit 1
+      fi
     - echo "[BOOTSTRAP] Applying bootstrap configuration..."
-    - terraform apply -auto-approve
+    - terraform apply -auto-approve tfbootstrap.plan
     - echo "[BOOTSTRAP] Bootstrap complete. Verifying resources..."
     - aws sts get-caller-identity
     - aws s3 ls s3://devops-platform4-terraform-state
