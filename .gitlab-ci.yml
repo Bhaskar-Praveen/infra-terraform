@@ -2,21 +2,23 @@ image:
   name: hashicorp/terraform:1.5
   entrypoint: ["/bin/sh", "-c"]
 
+default:
+  id_tokens:
+    AWS_ID_TOKEN:
+      aud: https://gitlab.com
+
 stages:
   - validate
   - plan
   - apply
 
-id_tokens:
-  AWS_ID_TOKEN:
-    aud: https://gitlab.com
 
 before_script:
   - terraform --version
   - apk add --no-cache git curl jq
 
   # OIDC setup
-  - echo "$CI_JOB_JWT_V2" > /tmp/web_identity_token
+  - echo "$AWS_ID_TOKEN" > /tmp/web_identity_token
   - export AWS_ROLE_ARN=$AWS_ROLE_ARN
   - export AWS_WEB_IDENTITY_TOKEN_FILE=/tmp/web_identity_token
   - export AWS_DEFAULT_REGION=$AWS_DEFAULT_REGION
