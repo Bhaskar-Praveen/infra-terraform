@@ -35,6 +35,8 @@ bootstrap:
     - cd bootstrap
     - terraform init -backend=false
     - terraform apply -auto-approve
+    - aws sts get-caller-identity
+    - aws s3 ls s3://my-terraform-state-bucket
 
 # ---------------- DEV ---------------- #
 
